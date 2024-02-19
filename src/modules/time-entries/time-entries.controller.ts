@@ -1,16 +1,19 @@
 import {
   Controller,
+  Put,
   Post,
   Get,
   Query,
   UseGuards,
   HttpException,
   HttpStatus,
+  Body,
+  Param,
 } from '@nestjs/common';
 import { AuthGuard } from '../../guards/auth.guard';
-import { Body } from '@nestjs/common';
-import { TimeEntriesService } from './time-entries.service';
+import { UpdateTimeEntryDto } from './dto/update-time-entry.dto';
 import { GetCurrentMonthTimeEntriesDto } from './dto/get-current-month-time-entries.dto';
+import { TimeEntriesService } from './time-entries.service';
 import { TimeEntry } from '../../entities/time_entries';
 
 @Controller()
@@ -39,6 +42,27 @@ export class TimeEntriesController {
         throw new HttpException('User not found.', HttpStatus.BAD_REQUEST);
       }
       throw new HttpException('An unexpected error occurred on the server.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Put('/api/time-entries/:id')
+  @UseGuards(AuthGuard)
+  async updateTimeEntry(@Param('id') id: number, @Body() updateDto: UpdateTimeEntryDto) {
+    try {
+      const updatedEntry = await this.timeEntriesService.updateTimeEntry({ ...updateDto, id });
+      return {
+        status: HttpStatus.OK,
+        time_entry: {
+          id: updatedEntry.id,
+          user_id: updatedEntry.user_id,
+          check_in: updatedEntry.check_in_time.toISOString(),
+          check_out: updatedEntry.check_out_time.toISOString(),
+          date: updatedEntry.entry_date.toISOString().split('T')[0],
+          is_edited: updatedEntry.is_edited,
+        },
+      };
+    } catch (error) {
+      throw new HttpException(error.message, error.status || HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
