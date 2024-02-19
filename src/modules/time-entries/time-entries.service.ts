@@ -1,10 +1,10 @@
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm'; // Added Between import
+import { Repository, Between } from 'typeorm';
 import { TimeEntry } from '../../entities/time_entries';
 import { getCurrentMonthAndYear } from '../../utils/date';
-import { TimeEntryValidator } from '../../shared/validators/time-entry.validator'; // Added import for TimeEntryValidator
+import { UpdateTimeEntryDto } from './dto/update-time-entry.dto';
+import { TimeEntryValidator } from '../../shared/validators/time-entry.validator';
 
 @Injectable()
 export class TimeEntriesService {
@@ -53,6 +53,30 @@ export class TimeEntriesService {
 
     // If all validations pass
     return { message: 'Time entry data is valid.' };
+  }
+
+  async updateTimeEntry(dto: UpdateTimeEntryDto): Promise<TimeEntry> {
+    await this.validateTimeEntryData({ id: dto.id, check_in: dto.checkIn, check_out: dto.checkOut });
+
+    const timeEntry = await this.timeEntriesRepository.findOne({
+      where: { id: dto.id },
+    });
+
+    if (!timeEntry) {
+      throw new Error('Time entry not found.');
+    }
+
+    if (timeEntry.user_id !== dto.userId) {
+      throw new Error('You can only edit your own time entries.');
+    }
+
+    timeEntry.check_in_time = dto.checkIn; // Assuming check_in_time is the correct field name
+    timeEntry.check_out_time = dto.checkOut; // Assuming check_out_time is the correct field name
+    timeEntry.is_edited = true;
+
+    await this.timeEntriesRepository.save(timeEntry);
+
+    return timeEntry;
   }
 
   // Other methods...
