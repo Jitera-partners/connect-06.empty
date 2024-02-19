@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Permission } from 'src/entities/permissions';
@@ -11,14 +12,22 @@ export class PermissionsService {
   ) {}
 
   async checkEditTimeEntryPermission(userId: number): Promise<boolean> {
-    const permission = await this.permissionsRepository.findOne({
-      where: { user_id: userId },
-    });
+    try {
+      const permission = await this.permissionsRepository.findOne({
+        where: { user_id: userId },
+      });
 
-    if (!permission || !permission.can_edit_time_entries) {
-      throw new Error('User is not authorized to edit time entries.');
+      if (!permission) {
+        throw new HttpException('User not found.', HttpStatus.NOT_FOUND);
+      }
+
+      if (!permission.can_edit_time_entries) {
+        throw new HttpException('User does not have permission to edit time entries.', HttpStatus.FORBIDDEN);
+      }
+
+      return true;
+    } catch (error) {
+      throw new HttpException(error.message, error.status || HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
-    return true;
   }
 }
