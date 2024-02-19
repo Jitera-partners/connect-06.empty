@@ -1,3 +1,4 @@
 import { HealthCheckModule } from './health-check/health-check.module'
+import { AttendanceModule } from './attendance/attendance.module'
 
-export default [HealthCheckModule]
+export default [HealthCheckModule, AttendanceModule]
