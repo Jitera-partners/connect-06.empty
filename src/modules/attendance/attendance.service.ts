@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+ { Injectable, NotFoundException } from '@nestjs/common';
 import { UserRepository } from 'src/repositories/user.repository';
 import { AttendanceRecordRepository } from 'src/repositories/attendance-record.repository';
 import { AttendanceRecord } from 'src/entities/attendance_records';
 import { BadRequestException } from '@nestjs/common';
+import { Not, IsNull } from 'typeorm';
 
 @Injectable()
 export class AttendanceService {
@@ -14,7 +15,7 @@ export class AttendanceService {
   async recordCheckOut({ userId, checkOutTime }: { userId: number; checkOutTime: Date }) {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) {
-      throw new BadRequestException('User does not exist.');
+      throw new NotFoundException('User not found.');
     }
 
     const currentDate = new Date().toISOString().slice(0, 10);
@@ -25,7 +26,7 @@ export class AttendanceService {
         check_in_time: Not(IsNull()),
         check_out_time: IsNull(),
       },
-    });
+    }).catch(() => { throw new BadRequestException('Invalid user ID format.'); });
 
     if (!attendanceRecord) {
       throw new BadRequestException('Employee has not checked in today.');
@@ -33,14 +34,19 @@ export class AttendanceService {
 
     attendanceRecord.check_out_time = checkOutTime;
     await this.attendanceRecordRepository.save(attendanceRecord);
-
-    // Log the check-out action for auditing purposes
-    console.log(`User ID: ${userId} checked out at: ${checkOutTime}`);
-
-    return {
+    
+    const response = {
+      status: 200,
       message: 'Check-out recorded successfully.',
-      userId: userId,
-      checkOutTime: checkOutTime,
+      attendance_record: {
+        id: attendanceRecord.id,
+        user_id: userId,
+        check_in_time: attendanceRecord.check_in_time,
+        check_out_time: attendanceRecord.check_out_time,
+        date: attendanceRecord.date
+      }
     };
+
+    return response;
   }
 }
